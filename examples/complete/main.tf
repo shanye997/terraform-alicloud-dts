@@ -83,10 +83,22 @@ resource "alicloud_db_instance" "target" {
   instance_name    = "rds-mysql-target"
 }
 
+resource "alicloud_db_database" "target_db" {
+  instance_id = alicloud_db_instance.target.id
+  name        = "test_database"
+}
+
 resource "alicloud_rds_account" "target_account" {
   db_instance_id   = alicloud_db_instance.target.id
   account_name     = "test_mysql"
   account_password = "N1cetest"
+}
+
+resource "alicloud_db_account_privilege" "target_privilege" {
+  instance_id  = alicloud_db_instance.target.id
+  account_name = alicloud_rds_account.target_account.name
+  privilege    = "ReadWrite"
+  db_names     = alicloud_db_database.target_db.*.name
 }
 
 module "example" {
@@ -105,7 +117,7 @@ module "example" {
 
   #alicloud_dts_synchronization_job
   create_sync_job                    = true
-  synchronization_bidirectional      = var.synchronization_bidirectional
+  synchronization_bidirectional      = true
   dts_job_name                       = var.dts_job_name
   data_initialization                = var.data_initialization
   data_synchronization               = var.data_synchronization

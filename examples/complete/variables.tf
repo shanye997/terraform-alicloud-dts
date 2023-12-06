@@ -34,13 +34,13 @@ variable "payment_duration_unit" {
 variable "source_endpoint_region" {
   description = "The region of source instance."
   type        = string
-  default     = "cn-hangzhou"
+  default     = "eu-central-1"
 }
 
 variable "destination_endpoint_region" {
   description = "The region of destination instance."
   type        = string
-  default     = "cn-hangzhou"
+  default     = "eu-central-1"
 }
 
 variable "instance_class" {
