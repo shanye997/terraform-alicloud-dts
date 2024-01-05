@@ -1,58 +1,50 @@
 variable "name" {
-  default = "tf-test"
+  default = "tf-example"
 }
 
-variable "creation" {
-  default = "Rds"
-}
-
-data "alicloud_zones" "default" {
-  available_resource_creation = var.creation
-}
-
-data "alicloud_vpcs" "default" {
-  name_regex = "default-NODELETING"
-}
-
-data "alicloud_vswitches" "default" {
-  vpc_id  = data.alicloud_vpcs.default.ids.0
-  zone_id = data.alicloud_db_zones.default.zones.1.id
-}
-
-resource "alicloud_vswitch" "default" {
-  count        = length(data.alicloud_vswitches.default.ids) > 1 ? 0 : 1
-  vpc_id       = data.alicloud_vpcs.default.ids.0
-  cidr_block   = cidrsubnet(data.alicloud_vpcs.default.vpcs[0].cidr_block, 8, 15)
-  zone_id      = data.alicloud_db_zones.default.zones.1.id
-  vswitch_name = "subnet-for-local-test"
-  tags         = {}
-}
-
-data "alicloud_db_zones" "default" {
+data "alicloud_db_zones" "example" {
   engine                   = "MySQL"
   engine_version           = "8.0"
   instance_charge_type     = "PostPaid"
-  category                 = "HighAvailability"
-  db_instance_storage_type = "local_ssd"
+  category                 = "Basic"
+  db_instance_storage_type = "cloud_essd"
 }
 
-data "alicloud_db_instance_classes" "default" {
-  zone_id                  = data.alicloud_db_zones.default.zones.1.id
+data "alicloud_db_instance_classes" "example" {
+  zone_id                  = data.alicloud_db_zones.example.zones.0.id
   engine                   = "MySQL"
   engine_version           = "8.0"
-  category                 = "HighAvailability"
-  db_instance_storage_type = "local_ssd"
+  category                 = "Basic"
+  db_instance_storage_type = "cloud_essd"
   instance_charge_type     = "PostPaid"
+}
+
+resource "alicloud_vpc" "example" {
+  vpc_name   = "terraform-example"
+  cidr_block = "172.16.0.0/16"
+}
+
+resource "alicloud_vswitch" "example" {
+  vpc_id       = alicloud_vpc.example.id
+  cidr_block   = "172.16.0.0/24"
+  zone_id      = data.alicloud_db_zones.example.zones.0.id
+  vswitch_name = "terraform-example"
+}
+
+resource "alicloud_security_group" "example" {
+  name   = "terraform-example"
+  vpc_id = alicloud_vpc.example.id
 }
 
 ## Source RDS MySQL
 resource "alicloud_db_instance" "source" {
-  engine           = "MySQL"
-  engine_version   = "8.0"
-  instance_type    = data.alicloud_db_instance_classes.default.instance_classes.0.instance_class
-  instance_storage = data.alicloud_db_instance_classes.default.instance_classes.0.storage_range.min
-  vswitch_id       = length(data.alicloud_vswitches.default.ids) > 0 ? data.alicloud_vswitches.default.ids[0] : concat(alicloud_vswitch.default.*.id, [""])[0]
-  instance_name    = "rds-mysql-source"
+  engine               = "MySQL"
+  engine_version       = "8.0"
+  instance_type        = data.alicloud_db_instance_classes.example.instance_classes.1.instance_class
+  instance_storage     = data.alicloud_db_instance_classes.example.instance_classes.1.storage_range.min
+  instance_charge_type = "Postpaid"
+  vswitch_id           = alicloud_vswitch.example.id
+  instance_name        = "rds-mysql-source"
 }
 
 resource "alicloud_db_database" "source_db" {
@@ -75,12 +67,13 @@ resource "alicloud_db_account_privilege" "source_privilege" {
 
 ## Target RDS MySQL
 resource "alicloud_db_instance" "target" {
-  engine           = "MySQL"
-  engine_version   = "8.0"
-  instance_type    = data.alicloud_db_instance_classes.default.instance_classes.0.instance_class
-  instance_storage = data.alicloud_db_instance_classes.default.instance_classes.0.storage_range.min
-  vswitch_id       = length(data.alicloud_vswitches.default.ids) > 0 ? data.alicloud_vswitches.default.ids[0] : concat(alicloud_vswitch.default.*.id, [""])[0]
-  instance_name    = "rds-mysql-target"
+  engine               = "MySQL"
+  engine_version       = "8.0"
+  instance_type        = data.alicloud_db_instance_classes.example.instance_classes.1.instance_class
+  instance_storage     = data.alicloud_db_instance_classes.example.instance_classes.1.storage_range.min
+  instance_charge_type = "Postpaid"
+  vswitch_id           = alicloud_vswitch.example.id
+  instance_name        = "rds-mysql-target"
 }
 
 resource "alicloud_db_database" "target_db" {
@@ -92,13 +85,7 @@ resource "alicloud_rds_account" "target_account" {
   db_instance_id   = alicloud_db_instance.target.id
   account_name     = "test_mysql"
   account_password = "N1cetest"
-}
-
-resource "alicloud_db_account_privilege" "target_privilege" {
-  instance_id  = alicloud_db_instance.target.id
-  account_name = alicloud_rds_account.target_account.name
-  privilege    = "ReadWrite"
-  db_names     = alicloud_db_database.target_db.*.name
+  account_type     = "Super"
 }
 
 module "example" {

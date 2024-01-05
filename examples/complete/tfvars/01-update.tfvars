@@ -1,5 +1,4 @@
 #alicloud_dts_synchronization_instance
-instance_class = "medium"
 
 #alicloud_dts_synchronization_job
 dts_job_name   = "tf-testAccCase2"
