@@ -7,6 +7,7 @@ on:
 jobs:
   weekly-e2e-check:
     if: github.repository_owner == 'alibabacloud-automation'
+    name: 'weekly e2e check'
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
@@ -18,7 +19,10 @@ jobs:
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          job-name: 'e2e check'   
+          job-name: 'weekly e2e check'   
+      - name: Get job id
+        run: |
+          echo "The current job id is ${{ steps.set-job-id.outputs.jobId }}"
       - name: weekly e2e test
         run: |
           objectPath="github-action/${{github.repository}}/weekly-e2e/Action-${{github.run_number}}-${{github.run_id}}-${{ steps.set-job-id.outputs.jobId }}"
